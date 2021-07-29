@@ -21,6 +21,9 @@
 public class Main {
 
     public static void main(String[] args) {
+
+        long startTime = System.currentTimeMillis();
+
         int nIndividuals = 20;
         int nGenerations = 1000;
         double crossoverRate = 0.85;
@@ -42,6 +45,9 @@ public class Main {
             System.out.println("Dataset: " + i + " Optimum: " + k.optimum + 
             " Mean: " + result[0] + " Best: " + result[1] + " Worst: " + result[2]);
         }
+        long endTime = System.currentTimeMillis();
+        double elapsed = (endTime - startTime) / 1000.0;
+        System.out.println("That took " + elapsed + "s");
     }
 
     static double[] meanBestWorst(double[] x) {
