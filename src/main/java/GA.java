@@ -32,7 +32,7 @@ public class GA {
     double mutationRate;
     double elitismRate;
 
-    Random random;
+    static Random random = new Random();
 
     GA(Knapsack knapsack, int nIndividuals, int nGenerations,
     double crossoverRate, double mutationRate, double elitismRate) {
@@ -44,12 +44,22 @@ public class GA {
         this.crossoverRate = crossoverRate;
         this.mutationRate = mutationRate;
         this.elitismRate = elitismRate;
-
-        random = new Random();
-
     }
 
-    Individual[] rouletteSelection(Population p) {
+    private void sort(Individual[] p) {
+        Arrays.sort(p, Collections.reverseOrder());
+    }
+
+    private Individual[] generatePopulation() {
+        Individual[] p = new Individual[this.nIndividuals];
+        for (int i = 0; i < nIndividuals; i++) {
+            p[i] = new Individual();
+        }
+        sort(p);
+        return p;
+    }
+
+    private Individual[] rouletteSelection(Individual[] p) {
         int skip = -1;
         Individual[] selected = new Individual[2];
         // Loop twice to select two individuals.
@@ -60,7 +70,7 @@ public class GA {
                 if (j == skip) {
                     continue;
                 }
-                tf += p.individuals[j].fitness;
+                tf += p[j].fitness;
             }
             double cf = 0;
             double r = random.nextDouble();
@@ -71,13 +81,13 @@ public class GA {
                 // Prevent divding by zero.
                 if (tf == 0) {
                     // Reduces to random selection.
-                    cf += 1.0 / (p.individuals.length - i);
+                    cf += 1.0 / (p.length - i);
                 } else {
                     // Else, select based on cumulative fitness.
-                    cf += p.individuals[j].fitness / tf;
+                    cf += p[j].fitness / tf;
                 }
                 if (r < cf) {
-                    selected[i] = new Individual(p.individuals[j]);
+                    selected[i] = new Individual(p[j]);
                     skip = j;
                     break;
                 }
@@ -86,7 +96,7 @@ public class GA {
         return selected;
     }
 
-    void singlePointCrossover(Individual[] selected) {
+    private void singlePointCrossover(Individual[] selected) {
         int crossoverPoint = random.nextInt(this.nGenes - 1) + 1;
         for (int i = 0; i < crossoverPoint; i++) {
             int temp = selected[0].genes[i];
@@ -95,14 +105,14 @@ public class GA {
         }
     }
 
-    Population recombination(Population p) {
-        double worst = p.individuals[this.nIndividuals - 1].fitness;
+    private Individual[] recombination(Individual[] p) {
+        double worst = p[this.nIndividuals - 1].fitness;
 
         for (int i = 0; i < this.nIndividuals; i++) {
-            p.individuals[i].fitness -= worst;
+            p[i].fitness -= worst;
         }
 
-        Population new_p = new Population();
+        Individual[] new_p = new Individual[this.nIndividuals];
 
         for (int i = 0; i < this.nIndividuals; i += 2) {
             Individual[] selected = rouletteSelection(p);
@@ -115,56 +125,51 @@ public class GA {
                 j == 2) {
                     break;
                 }
-                new_p.individuals[i + j] = selected[j];
+                new_p[i + j] = selected[j];
             }
         }
         return new_p;
     }
 
-    void mutation(Population p) {
+    private void mutation(Individual[] p) {
         for (int i = 0; i < this.nIndividuals; i++) {
             for (int j = 0; j < this.nGenes; j++) {
                 double r = random.nextDouble();
                 if (r < this.mutationRate) {
-                    if (p.individuals[i].genes[j] == 0) {
-                        p.individuals[i].genes[j] = 1;
+                    if (p[i].genes[j] == 0) {
+                        p[i].genes[j] = 1;
                     } else {
-                        p.individuals[i].genes[j] = 0;
+                        p[i].genes[j] = 0;
                     }
                 }
             }
         }
     }
 
-    void elitism(Population p, Population new_p) {
+    private void elitism(Individual[] p, Individual[] new_p) {
         int nElites = (int) Math.ceil(this.elitismRate * this.nIndividuals);
         for (int i = nElites; i < this.nIndividuals; i++) {
-            p.individuals[i] = new_p.individuals[i - nElites];
+            p[i] = new_p[i - nElites];
         }
     }
 
-    void updateFitness(Population p) {
-        double tf = 0;
+    private void updateFitness(Individual[] p) {
         for (int i = 0; i < this.nIndividuals; i++) {
-            p.individuals[i].fitness = knapsack.objective(p.individuals[i].genes);
-            tf += p.individuals[i].fitness;
+            p[i].fitness = knapsack.objective(p[i].genes);
         }
-        p.sort();
-        p.avgFitness = tf / this.nIndividuals;        
+        sort(p);   
     }
 
-    Individual run() {
-        Population p = new Population();
-        p.initialize();
-
+    public Individual run() {
+        Individual[] p = generatePopulation();
         for (int i = 0; i < this.nGenerations; i++) {
-            Population new_p = recombination(p);
+            Individual[] new_p = recombination(p);
             mutation(new_p);
             updateFitness(new_p);
             elitism(p, new_p);
             updateFitness(p);
         }
-        return p.individuals[0];
+        return p[0];
     }
 
     class Individual implements Comparable<Individual> {
@@ -198,42 +203,4 @@ public class GA {
             }
         }
     }
-
-    class Population {
-
-        Individual[] individuals;
-        double avgFitness;
-
-        // Empty population.
-        Population() {
-            this.individuals = new Individual[nIndividuals];
-            this.avgFitness = 0;
-        }
-
-        // Clone another population.
-        Population(Population other) {
-            this.individuals = new Individual[nIndividuals];
-            for (int i = 0; i < nIndividuals; i++) {
-                this.individuals[i] = new Individual(other.individuals[i]);
-            }
-            this.avgFitness = other.avgFitness;
-        }
-
-        void initialize() {
-            double tf = 0;
-            for (int i = 0; i < nIndividuals; i++) {
-                Individual ind = new Individual();
-                this.individuals[i] = ind;
-                tf += ind.fitness;
-            }
-            sort();
-            this.avgFitness = tf / nIndividuals;
-        }
-
-        void sort() {
-            Arrays.sort(this.individuals, Collections.reverseOrder());
-        }
-
-    }
-    
 }
