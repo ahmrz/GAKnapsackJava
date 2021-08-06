@@ -122,7 +122,7 @@ public class GA {
             }
             for (int j = 0; j < 2; j++) {
                 if (this.nIndividuals % 2 == 1 && i == this.nIndividuals - 1 && 
-                j == 2) {
+                j == 1) {
                     break;
                 }
                 new_p[i + j] = selected[j];
